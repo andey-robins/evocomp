@@ -17,6 +17,8 @@ public class Population {
     public BestChromo bestOverall;
     private BestChromo bestOfGeneration, bestOfRun;
 
+    private int bestOfGenRunNum, bestOfGenGenNum;
+
     private int currentGeneration, currentRun;
 
     private FileWriter outputWriter;
@@ -34,41 +36,55 @@ public class Population {
         // create the summary object immediately to save info
         // about the experiment
         params.outputParameters(this.outputWriter);
+
+        this.currentRun = 0;
+
         this.bestOfGeneration = new BestChromo(params);
         this.bestOfRun = new BestChromo(params);
         this.bestOverall = new BestChromo(params);
         this.bestOverall.rawFitness = this.defaultBest;
     }
 
-    public void initializePopulation() throws IOException {
+    /**
+     * Sets up the population for a new run of the experiment by re-sampling from
+     * the initial population. Should always be called before run() is called. This
+     * is currently not strictly enforced by the API
+     */
+    public void initializePopulation() {
         // Set up Fitness Statistics matrix
-        fitnessStats = new double[2][params.generations];
-        for (int i = 0; i < params.generations; i++) {
+        fitnessStats = new double[2][this.params.generations];
+        for (int i = 0; i < this.params.generations; i++) {
             fitnessStats[0][i] = 0;
             fitnessStats[1][i] = 0;
         }
 
-        if (params.problemType.equals("NM")) {
-            problem = new NumberMatch(params);
-        } else if (params.problemType.equals("OM")) {
-            problem = new OneMax(params);
+        if (this.params.problemType.equals("NM")) {
+            try {
+                problem = new NumberMatch(this.params);
+            } catch (Exception e) {
+                System.out.println(
+                        "Exception occurred while initializing population for problme NumberMatch: " + e.getMessage());
+                System.exit(1);
+            }
+        } else if (this.params.problemType.equals("OM")) {
+            problem = new OneMax(this.params);
         } else {
             System.out.println("Invalid Problem Type");
             System.out.println("Valid options are 'NM' for NumberMatch or 'OM' for OneMax");
-            return;
+            System.exit(1);
         }
 
-        this.memberIndex = new int[params.popSize];
-        this.memberFitness = new double[params.popSize];
-        this.members = new Chromo[params.popSize];
-        this.children = new Chromo[params.popSize];
-        this.bestOfGeneration = new BestChromo(params);
-        this.bestOfRun = new BestChromo(params);
+        this.memberIndex = new int[this.params.popSize];
+        this.memberFitness = new double[this.params.popSize];
+        this.members = new Chromo[this.params.popSize];
+        this.children = new Chromo[this.params.popSize];
+        this.bestOfGeneration = new BestChromo(this.params);
+        this.bestOfRun = new BestChromo(this.params);
         // best Overall doesn't get reset when we re-initialize the population since we
         // want to keep track of it's best overall for as long as the population object
         // exists
 
-        if (params.minORmax.equals("max")) {
+        if (this.params.minORmax.equals("max")) {
             this.defaultBest = 0;
             this.defaultWorst = Double.POSITIVE_INFINITY;
         } else {
@@ -77,16 +93,25 @@ public class Population {
         }
 
         // Initialize First Generation
-        for (int i = 0; i < params.popSize; i++) {
-            this.members[i] = new Chromo(params);
-            this.children[i] = new Chromo(params);
+        for (int i = 0; i < this.params.popSize; i++) {
+            this.members[i] = new Chromo(this.params);
+            this.children[i] = new Chromo(this.params);
         }
 
         this.bestOfGeneration.rawFitness = this.defaultBest;
         this.bestOfRun.rawFitness = this.defaultBest;
+
+        this.currentRun++;
     }
 
-    public BestChromo run() {
+    /**
+     * Executes a "run" of evolution for the given population, executing for a
+     * number of generations defined by the parameters provided when initializing
+     * the population. This method should not be called before initializePopulation
+     * 
+     * @return The best chromosome found during the run
+     */
+    public BestChromo run() throws IOException {
 
         for (this.currentGeneration = 0; this.currentGeneration < this.params.generations; this.currentGeneration++) {
             this.sumProFitness = 0;
@@ -108,47 +133,18 @@ public class Population {
                 sumRawFitness2 = sumRawFitness2 +
                         this.members[i].rawFitness * this.members[i].rawFitness;
 
-                if (params.minORmax.equals("max")) {
-                    if (this.members[i].rawFitness > this.bestOfRun.rawFitness) {
-                        this.bestOfGeneration.copyTo(this.members[i]);
-                        bestOfGenR = runCount;
-                        bestOfGenG = currentGeneration;
-                    }
-                    if (this.members[i].rawFitness > bestOfRunChromo.rawFitness) {
-                        bestOfRunChromo.copyTo(this.members[i]);
-                        bestOfRunR = runCount;
-                        bestOfRunG = currentGeneration;
-                    }
-                    if (this.members[i].rawFitness > bestOverAllChromo.rawFitness) {
-                        bestOverAllChromo.copyTo(this.members[i]);
-                        bestOverAllR = runCount;
-                        bestOverAllG = currentGeneration;
-                    }
-                } else {
-                    if (this.members[i].rawFitness < bestOfGenChromo.rawFitness) {
-                        bestOfGenChromo.copyTo(this.members[i]);
-                        bestOfGenR = runCount;
-                        bestOfGenG = currentGeneration;
-                    }
-                    if (this.members[i].rawFitness < bestOfRunChromo.rawFitness) {
-                        bestOfRunChromo.copyTo(this.members[i]);
-                        bestOfRunR = runCount;
-                        bestOfRunG = currentGeneration;
-                    }
-                    if (this.members[i].rawFitness < bestOverAllChromo.rawFitness) {
-                        bestOverAllChromo.copyTo(this.members[i]);
-                        bestOverAllR = runCount;
-                        bestOverAllG = currentGeneration;
-                    }
-                }
+                // update best here
+                this.updateBestIfBetter(this.members[i], this.bestOfGeneration);
+                this.updateBestIfBetter(this.members[i], this.bestOfRun);
+                this.updateBestIfBetter(this.members[i], this.bestOverall);
             }
 
             // Accumulate fitness statistics
-            fitnessStats[0][currentGeneration] += sumRawFitness / params.popSize;
-            fitnessStats[1][currentGeneration] += bestOfGenChromo.rawFitness;
+            double averageRawFitness = sumRawFitness / params.popSize;
+            fitnessStats[0][this.currentGeneration] += averageRawFitness;
+            fitnessStats[1][this.currentGeneration] += this.bestOfGeneration.rawFitness;
 
-            averageRawFitness = sumRawFitness / params.popSize;
-            stdevRawFitness = Math.sqrt(
+            double stdevRawFitness = Math.sqrt(
                     Math.abs(sumRawFitness2 -
                             sumRawFitness * sumRawFitness / params.popSize)
                             /
@@ -156,34 +152,35 @@ public class Population {
 
             // Output generation statistics to screen
             System.out.println(
-                    runCount + "\t" + currentGeneration + "\t" + (int) bestOfGenChromo.rawFitness + "\t"
+                    this.currentRun + "\t" + this.currentGeneration + "\t" + (int) this.bestOfGeneration.rawFitness
+                            + "\t"
                             + averageRawFitness
                             + "\t" + stdevRawFitness);
 
             // Output generation statistics to summary file
-            summaryOutput.write(" R ");
-            Hwrite.right(runCount, 3, summaryOutput);
-            summaryOutput.write(" G ");
-            Hwrite.right(currentGeneration, 3, summaryOutput);
-            Hwrite.right((int) bestOfGenChromo.rawFitness, 7, summaryOutput);
-            Hwrite.right(averageRawFitness, 11, 3, summaryOutput);
-            Hwrite.right(stdevRawFitness, 11, 3, summaryOutput);
-            summaryOutput.write("\n");
+            this.outputWriter.write(" R ");
+            Hwrite.right(this.currentRun, 3, this.outputWriter);
+            this.outputWriter.write(" G ");
+            Hwrite.right(currentGeneration, 3, this.outputWriter);
+            Hwrite.right((int) this.bestOfGeneration.rawFitness, 7, this.outputWriter);
+            Hwrite.right(averageRawFitness, 11, 3, this.outputWriter);
+            Hwrite.right(stdevRawFitness, 11, 3, this.outputWriter);
+            this.outputWriter.write("\n");
 
             // scale fitness of each member and sum
             switch (params.scaleType) {
 
                 case 0: // No change to raw fitness
                     for (int i = 0; i < params.popSize; i++) {
-                        member[i].sclFitness = member[i].rawFitness + .000001;
-                        sumSclFitness += member[i].sclFitness;
+                        this.members[i].sclFitness = this.members[i].rawFitness + .000001;
+                        sumSclFitness += this.members[i].sclFitness;
                     }
                     break;
 
                 case 1: // Fitness not scaled. Only inverted.
                     for (int i = 0; i < params.popSize; i++) {
-                        member[i].sclFitness = 1 / (member[i].rawFitness + .000001);
-                        sumSclFitness += member[i].sclFitness;
+                        this.members[i].sclFitness = 1 / (this.members[i].rawFitness + .000001);
+                        sumSclFitness += this.members[i].sclFitness;
                     }
                     break;
 
@@ -192,7 +189,7 @@ public class Population {
                     // Copy genetic data to temp array
                     for (int i = 0; i < params.popSize; i++) {
                         memberIndex[i] = i;
-                        memberFitness[i] = member[i].rawFitness;
+                        memberFitness[i] = this.members[i].rawFitness;
                     }
                     // Bubble Sort the array by floating point number
                     for (int i = params.popSize - 1; i > 0; i--) {
@@ -209,8 +206,8 @@ public class Population {
                     }
                     // Copy ordered array to scale fitness fields
                     for (int i = 0; i < params.popSize; i++) {
-                        member[memberIndex[i]].sclFitness = i;
-                        sumSclFitness += member[memberIndex[i]].sclFitness;
+                        this.members[memberIndex[i]].sclFitness = i;
+                        sumSclFitness += this.members[memberIndex[i]].sclFitness;
                     }
 
                     break;
@@ -220,7 +217,7 @@ public class Population {
                     // Copy genetic data to temp array
                     for (int i = 0; i < params.popSize; i++) {
                         memberIndex[i] = i;
-                        memberFitness[i] = member[i].rawFitness;
+                        memberFitness[i] = this.members[i].rawFitness;
                     }
                     // Bubble Sort the array by floating point number
                     for (int i = 1; i < params.popSize; i++) {
@@ -237,8 +234,8 @@ public class Population {
                     }
                     // Copy array order to scale fitness fields
                     for (int i = 0; i < params.popSize; i++) {
-                        member[memberIndex[i]].sclFitness = i;
-                        sumSclFitness += member[memberIndex[i]].sclFitness;
+                        this.members[memberIndex[i]].sclFitness = i;
+                        sumSclFitness += this.members[memberIndex[i]].sclFitness;
                     }
 
                     break;
@@ -252,8 +249,8 @@ public class Population {
             // *********************************************************************
 
             for (int i = 0; i < params.popSize; i++) {
-                member[i].proFitness = member[i].sclFitness / sumSclFitness;
-                sumProFitness = sumProFitness + member[i].proFitness;
+                this.members[i].proFitness = this.members[i].sclFitness / sumSclFitness;
+                sumProFitness = sumProFitness + this.members[i].proFitness;
             }
 
             // crossover and create next generation
@@ -264,36 +261,37 @@ public class Population {
             for (int i = 0; i < params.popSize; i = i + 2) {
 
                 // Select Two Parents
-                parent1 = selectParent(params);
+                parent1 = Search.selectParent(params);
                 parent2 = parent1;
                 while (parent2 == parent1) {
-                    parent2 = selectParent(params);
+                    parent2 = Search.selectParent(params);
                 }
 
                 // Crossover Two Parents to Create Two Children
-                randnum = rng.nextDouble();
+                double randnum = Search.rng.nextDouble();
                 if (randnum < params.xoverRate) {
-                    mateParents(parent1, parent2, member[parent1], member[parent2], child[i], child[i + 1],
+                    Search.mateParents(parent1, parent2, this.members[parent1], this.members[parent2], this.children[i],
+                            this.children[i + 1],
                             params);
                 } else {
-                    child[i] = new Chromo(member[parent1]);
-                    child[i + 1] = new Chromo(member[parent2]);
+                    this.children[i] = new Chromo(this.members[parent1]);
+                    this.children[i + 1] = new Chromo(this.members[parent2]);
                 }
             } // End Crossover
 
             // Mutate Children
             for (int i = 0; i < params.popSize; i++) {
-                child[i].doMutation();
+                this.children[i].doMutation();
             }
 
             // Swap Children with Last Generation
             for (int i = 0; i < params.popSize; i++) {
-                member[i].copyTo(child[i]);
+                this.members[i].copyTo(this.children[i]);
             }
         }
 
-        Hwrite.left(bestOfRunR, 4, summaryOutput);
-        Hwrite.right(bestOfRunG, 4, summaryOutput);
+        Hwrite.left(this.bestOfGenRunNum, 4, this.outputWriter);
+        Hwrite.right(this.bestOfGenGenNum, 4, this.outputWriter);
 
         return this.bestOfRun;
     }
@@ -319,5 +317,20 @@ public class Population {
 
         this.outputWriter.write("\n");
         this.outputWriter.close();
+    }
+
+    protected void updateBestIfBetter(Chromo curr, Chromo best) {
+        if (this.params.minORmax.equals("max")) {
+            if (curr.rawFitness > best.rawFitness) {
+                curr.copyTo(best);
+            }
+        } else {
+            if (curr.rawFitness < best.rawFitness) {
+                curr.copyTo(best);
+            }
+        }
+
+        this.bestOfGenRunNum = this.currentRun;
+        this.bestOfGenGenNum = this.currentGeneration;
     }
 }
