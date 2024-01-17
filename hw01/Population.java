@@ -11,8 +11,11 @@ public class Population {
 
     private int memberIndex[];
     private double memberFitness[];
+    private static int TmemberIndex;
+    private static double TmemberFitness;
 
-    private BestChromo best;
+    public BestChromo bestOverall;
+    private BestChromo bestOfGeneration, bestOfRun;
 
     private int currentGeneration, currentRun;
 
@@ -20,13 +23,24 @@ public class Population {
 
     private static double fitnessStats[][]; // 0=Avg, 1=Best
 
+    private double sumRawFitness;
+    private double sumRawFitness2; // sum of squares of fitness
+    private double sumSclFitness;
+    private double sumProFitness;
+
     public Population(Parameters params) throws IOException {
         this.params = params;
         this.outputWriter = new FileWriter(params.expID + "_summary.txt");
         // create the summary object immediately to save info
         // about the experiment
         params.outputParameters(this.outputWriter);
+        this.bestOfGeneration = new BestChromo(params);
+        this.bestOfRun = new BestChromo(params);
+        this.bestOverall = new BestChromo(params);
+        this.bestOverall.rawFitness = this.defaultBest;
+    }
 
+    public void initializePopulation() throws IOException {
         // Set up Fitness Statistics matrix
         fitnessStats = new double[2][params.generations];
         for (int i = 0; i < params.generations; i++) {
@@ -48,9 +62,11 @@ public class Population {
         this.memberFitness = new double[params.popSize];
         this.members = new Chromo[params.popSize];
         this.children = new Chromo[params.popSize];
-        // this.bestOfGeneration = new BestChromo(params);
-        // this.bestOfRun = new BestChromo(params);
-        // this.bestOverall = new BestChromo(params);
+        this.bestOfGeneration = new BestChromo(params);
+        this.bestOfRun = new BestChromo(params);
+        // best Overall doesn't get reset when we re-initialize the population since we
+        // want to keep track of it's best overall for as long as the population object
+        // exists
 
         if (params.minORmax.equals("max")) {
             this.defaultBest = 0;
@@ -66,61 +82,61 @@ public class Population {
             this.children[i] = new Chromo(params);
         }
 
-        // bestOverall.rawFitness = this.defaultBest;
+        this.bestOfGeneration.rawFitness = this.defaultBest;
+        this.bestOfRun.rawFitness = this.defaultBest;
     }
 
     public BestChromo run() {
-        this.best.rawFitness = this.defaultBest;
 
         for (this.currentGeneration = 0; this.currentGeneration < this.params.generations; this.currentGeneration++) {
-            sumProFitness = 0;
-            sumSclFitness = 0;
-            sumRawFitness = 0;
-            sumRawFitness2 = 0;
-            bestOfGenChromo.rawFitness = defaultBest;
+            this.sumProFitness = 0;
+            this.sumSclFitness = 0;
+            this.sumRawFitness = 0;
+            this.sumRawFitness2 = 0;
+            this.bestOfGeneration.rawFitness = defaultBest;
 
             // Test Fitness of Each Member
             for (int i = 0; i < params.popSize; i++) {
 
-                member[i].rawFitness = 0;
-                member[i].sclFitness = 0;
-                member[i].proFitness = 0;
+                this.members[i].rawFitness = 0;
+                this.members[i].sclFitness = 0;
+                this.members[i].proFitness = 0;
 
-                problem.doRawFitness(member[i]);
+                problem.doRawFitness(this.members[i]);
 
-                sumRawFitness = sumRawFitness + member[i].rawFitness;
+                sumRawFitness = sumRawFitness + this.members[i].rawFitness;
                 sumRawFitness2 = sumRawFitness2 +
-                        member[i].rawFitness * member[i].rawFitness;
+                        this.members[i].rawFitness * this.members[i].rawFitness;
 
                 if (params.minORmax.equals("max")) {
-                    if (member[i].rawFitness > bestOfGenChromo.rawFitness) {
-                        bestOfGenChromo.copyTo(member[i]);
+                    if (this.members[i].rawFitness > this.bestOfRun.rawFitness) {
+                        this.bestOfGeneration.copyTo(this.members[i]);
                         bestOfGenR = runCount;
                         bestOfGenG = currentGeneration;
                     }
-                    if (member[i].rawFitness > bestOfRunChromo.rawFitness) {
-                        bestOfRunChromo.copyTo(member[i]);
+                    if (this.members[i].rawFitness > bestOfRunChromo.rawFitness) {
+                        bestOfRunChromo.copyTo(this.members[i]);
                         bestOfRunR = runCount;
                         bestOfRunG = currentGeneration;
                     }
-                    if (member[i].rawFitness > bestOverAllChromo.rawFitness) {
-                        bestOverAllChromo.copyTo(member[i]);
+                    if (this.members[i].rawFitness > bestOverAllChromo.rawFitness) {
+                        bestOverAllChromo.copyTo(this.members[i]);
                         bestOverAllR = runCount;
                         bestOverAllG = currentGeneration;
                     }
                 } else {
-                    if (member[i].rawFitness < bestOfGenChromo.rawFitness) {
-                        bestOfGenChromo.copyTo(member[i]);
+                    if (this.members[i].rawFitness < bestOfGenChromo.rawFitness) {
+                        bestOfGenChromo.copyTo(this.members[i]);
                         bestOfGenR = runCount;
                         bestOfGenG = currentGeneration;
                     }
-                    if (member[i].rawFitness < bestOfRunChromo.rawFitness) {
-                        bestOfRunChromo.copyTo(member[i]);
+                    if (this.members[i].rawFitness < bestOfRunChromo.rawFitness) {
+                        bestOfRunChromo.copyTo(this.members[i]);
                         bestOfRunR = runCount;
                         bestOfRunG = currentGeneration;
                     }
-                    if (member[i].rawFitness < bestOverAllChromo.rawFitness) {
-                        bestOverAllChromo.copyTo(member[i]);
+                    if (this.members[i].rawFitness < bestOverAllChromo.rawFitness) {
+                        bestOverAllChromo.copyTo(this.members[i]);
                         bestOverAllR = runCount;
                         bestOverAllG = currentGeneration;
                     }
@@ -276,7 +292,32 @@ public class Population {
             }
         }
 
-        return new BestChromo(this.params);
+        Hwrite.left(bestOfRunR, 4, summaryOutput);
+        Hwrite.right(bestOfRunG, 4, summaryOutput);
+
+        return this.bestOfRun;
     }
 
+    public void doPrintGenes(Chromo X) throws IOException {
+        problem.doPrintGenes(X, this.outputWriter);
+    }
+
+    public void printBestGenes() throws IOException {
+        Hwrite.left("B", 8, this.outputWriter);
+        this.doPrintGenes(this.bestOfRun);
+    }
+
+    public void printStatistics() throws IOException {
+        // Output Fitness Statistics matrix
+        this.outputWriter.write("Gen                 AvgFit              BestFit \n");
+        for (int i = 0; i < params.generations; i++) {
+            Hwrite.left(i, 15, this.outputWriter);
+            Hwrite.left(fitnessStats[0][i] / params.numRuns, 20, 2, this.outputWriter);
+            Hwrite.left(fitnessStats[1][i] / params.numRuns, 20, 2, this.outputWriter);
+            this.outputWriter.write("\n");
+        }
+
+        this.outputWriter.write("\n");
+        this.outputWriter.close();
+    }
 }

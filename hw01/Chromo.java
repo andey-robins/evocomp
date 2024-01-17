@@ -14,6 +14,11 @@ public class Chromo {
 	private static double randnum;
 	private Parameters params;
 
+	/**
+	 * Default constructor
+	 * 
+	 * @param p The parameters associated with the current chrom
+	 */
 	public Chromo(Parameters p) {
 
 		this.params = p;
@@ -38,6 +43,11 @@ public class Chromo {
 		this.proFitness = -1;
 	}
 
+	/**
+	 * Copy constructor
+	 * 
+	 * @param parent The Chromo object to copy
+	 */
 	public Chromo(Chromo parent) {
 		this.params = parent.params;
 		this.chromo = parent.chromo;
@@ -48,7 +58,10 @@ public class Chromo {
 		this.proFitness = -1;
 	}
 
-	// Get Alpha Represenation of a Gene
+	/**
+	 * @param geneID The gene to get the value of
+	 * @return the binary string representation of the gene's alpha value (???)
+	 */
 	public String getGeneAlpha(int geneID) {
 		int start = geneID * this.params.geneSize;
 		int end = (geneID + 1) * this.params.geneSize;
@@ -56,7 +69,10 @@ public class Chromo {
 		return (geneAlpha);
 	}
 
-	// Get Integer Value of a Gene (Positive or Negative, 2's Compliment) ****
+	/**
+	 * @param geneID The gene to get the value of
+	 * @return the integer value of the gene, encoded as a two's complement number
+	 */
 	public int getIntGeneValue(int geneID) {
 		String geneAlpha = "";
 		int geneValue;
@@ -75,7 +91,10 @@ public class Chromo {
 		return (geneValue);
 	}
 
-	// Get Integer Value of a Gene (Positive only)
+	/**
+	 * @param geneID The gene to get the value of
+	 * @return the positive integer value of the gene
+	 */
 	public int getPosIntGeneValue(int geneID) {
 		String geneAlpha = "";
 		int geneValue;
@@ -90,7 +109,10 @@ public class Chromo {
 		return (geneValue);
 	}
 
-	// Mutate a Chromosome Based on Mutation Type
+	/**
+	 * Mutate the Chromo object based on the mutation type and rate specified in the
+	 * parameter associated with the object
+	 */
 	public void doMutation() {
 
 		String mutChromo = "";
@@ -118,7 +140,11 @@ public class Chromo {
 		}
 	}
 
-	// Copy this chromosome into the target chromosome
+	/**
+	 * Copy the calling object into the target parameter
+	 * 
+	 * @param target The object to copy into
+	 */
 	public void copyTo(Chromo target) {
 
 		target.chromo = this.chromo;

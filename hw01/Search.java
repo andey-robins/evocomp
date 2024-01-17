@@ -4,7 +4,6 @@
 *  Version 2, January 18, 2004
 *******************************************************************************/
 
-import java.io.*;
 import java.util.*;
 
 public class Search {
@@ -14,13 +13,6 @@ public class Search {
 	public static Chromo[] member;
 	public static Chromo[] child;
 
-	private BestChromo bestOfGeneration, bestOfRun, bestOverall;
-
-	public static double sumRawFitness;
-	public static double sumRawFitness2; // sum of squares of fitness
-	public static double sumSclFitness;
-	public static double sumProFitness;
-
 	public static double averageRawFitness;
 	public static double stdevRawFitness;
 
@@ -28,71 +20,54 @@ public class Search {
 	public static int runCount;
 	private static double randnum;
 
-	private static int memberIndex[];
-	private static double memberFitness[];
-	private static int TmemberIndex;
-	private static double TmemberFitness;
-
 	public static void main(String[] args) throws java.io.IOException {
 
 		Calendar dateAndTime = Calendar.getInstance();
 		Date startTime = dateAndTime.getTime();
 
-		// Read Parameter File
-		if (args.length == 0) {
+		if (args.length != 1) {
 			System.out.println("\nUsage: java Search <parameter file name>\n");
 			return;
 		}
-		System.out.println("\nParameter File Name is: " + args[0] + "\n");
-		Parameters params = new Parameters(args[0]);
-		rng.setSeed(params.seed);
 
-		// Population population = new Population(params);
-
-		// Initialize RNG, array sizes and other objects
-
-		// Start program for multiple runs
-		for (runCount = 1; runCount <= params.numRuns; runCount++) {
-
-			System.out.println();
-			Population population = new Population(params);
-
-			// Begin Each Run
-			for (currentGeneration = 0; currentGeneration < params.generations; currentGeneration++) {
-
-			} // Repeat the above loop for each generation
-
-			Hwrite.left(bestOfRunR, 4, summaryOutput);
-			Hwrite.right(bestOfRunG, 4, summaryOutput);
-
-			problem.doPrintGenes(bestOfRunChromo, summaryOutput);
-
-			System.out.println(runCount + "\t" + "B" + "\t" + (int) bestOfRunChromo.rawFitness);
-
-		} // End of a Run
-
-		Hwrite.left("B", 8, summaryOutput);
-
-		problem.doPrintGenes(bestOverAllChromo, summaryOutput);
-
-		// Output Fitness Statistics matrix
-		summaryOutput.write("Gen                 AvgFit              BestFit \n");
-		for (int i = 0; i < params.generations; i++) {
-			Hwrite.left(i, 15, summaryOutput);
-			Hwrite.left(fitnessStats[0][i] / params.numRuns, 20, 2, summaryOutput);
-			Hwrite.left(fitnessStats[1][i] / params.numRuns, 20, 2, summaryOutput);
-			summaryOutput.write("\n");
+		System.out.println("\nLoading parameter file: " + args[0] + "\n");
+		Parameters params = null;
+		try {
+			params = new Parameters(args[0]);
+		} catch (Exception e) {
+			System.out.println("Exception occurred while reading parameters file: " + e.getMessage());
+			return;
 		}
 
-		summaryOutput.write("\n");
-		summaryOutput.close();
+		rng.setSeed(params.seed);
 
+		Population population = new Population(params);
+
+		// we execute multiple runs in order to avoid one-off sampling problems
+		for (runCount = 1; runCount <= params.numRuns; runCount++) {
+			System.out.println();
+
+			// initialize will reset our sampling of the population and allow for repeated
+			// sampling using additional 'runs' by invoking the run method.
+			population.initializePopulation();
+			BestChromo bestOfRun = population.run();
+
+			// output goes to both the summary file through this message as well as standard
+			// out to report while evaluation is ongoing
+
+			population.doPrintGenes(bestOfRun);
+
+			System.out.println(runCount + "\t" + "B" + "\t" + (int) bestOfRun.rawFitness);
+		}
+
+		population.printBestGenes();
+
+		// output runtime statistics
 		System.out.println();
 		System.out.println("Start:  " + startTime);
 		dateAndTime = Calendar.getInstance();
 		Date endTime = dateAndTime.getTime();
 		System.out.println("End  :  " + endTime);
-
 	}
 
 	// Select a parent for crossover
