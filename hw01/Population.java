@@ -133,7 +133,6 @@ public class Population {
                 sumRawFitness2 = sumRawFitness2 +
                         this.members[i].rawFitness * this.members[i].rawFitness;
 
-                // update best here
                 this.updateBestIfBetter(this.members[i], this.bestOfGeneration);
                 this.updateBestIfBetter(this.members[i], this.bestOfRun);
                 this.updateBestIfBetter(this.members[i], this.bestOverall);
@@ -169,7 +168,6 @@ public class Population {
 
             // scale fitness of each member and sum
             switch (params.scaleType) {
-
                 case 0: // No change to raw fitness
                     for (int i = 0; i < params.popSize; i++) {
                         this.members[i].sclFitness = this.members[i].rawFitness + .000001;
@@ -261,18 +259,17 @@ public class Population {
             for (int i = 0; i < params.popSize; i = i + 2) {
 
                 // Select Two Parents
-                parent1 = Search.selectParent(params);
+                parent1 = this.selectParent();
                 parent2 = parent1;
                 while (parent2 == parent1) {
-                    parent2 = Search.selectParent(params);
+                    parent2 = this.selectParent();
                 }
 
                 // Crossover Two Parents to Create Two Children
                 double randnum = Search.rng.nextDouble();
                 if (randnum < params.xoverRate) {
-                    Search.mateParents(parent1, parent2, this.members[parent1], this.members[parent2], this.children[i],
-                            this.children[i + 1],
-                            params);
+                    this.mateParents(parent1, parent2, this.members[parent1], this.members[parent2], this.children[i],
+                            this.children[i + 1]);
                 } else {
                     this.children[i] = new Chromo(this.members[parent1]);
                     this.children[i + 1] = new Chromo(this.members[parent2]);
@@ -294,6 +291,72 @@ public class Population {
         Hwrite.right(this.bestOfGenGenNum, 4, this.outputWriter);
 
         return this.bestOfRun;
+    }
+
+    // Select a parent for crossover
+    public int selectParent() {
+
+        double rWheel = 0;
+        int j = 0;
+        double randnum;
+
+        switch (this.params.selectType) {
+            case 1: // Proportional Selection
+                randnum = Search.rng.nextDouble();
+                for (j = 0; j < params.popSize; j++) {
+                    rWheel = rWheel + this.members[j].proFitness;
+                    if (randnum < rWheel)
+                        return (j);
+                }
+                break;
+
+            case 3: // Random Selection
+                randnum = Search.rng.nextDouble();
+                j = (int) (randnum * params.popSize);
+                return (j);
+
+            case 2: // Tournament Selection
+
+            default:
+                System.out.println("ERROR - No selection method selected");
+        }
+        return (-1);
+    }
+
+    // Produce a new child from two parents. The children and parents are both
+    // modified in place without any protections, so ensure that the parents are not
+    // reused
+    public void mateParents(int pnum1, int pnum2, Chromo parent1, Chromo parent2, Chromo child1, Chromo child2) {
+
+        int xoverPoint1;
+
+        switch (this.params.xoverType) {
+
+            case 1: // Single Point Crossover
+
+                // Select crossover point
+                xoverPoint1 = 1 + (int) (Search.rng.nextDouble() * (params.numGenes * params.geneSize - 1));
+
+                // Create child chromosome from parental material
+                child1.chromo = parent1.chromo.substring(0, xoverPoint1) + parent2.chromo.substring(xoverPoint1);
+                child2.chromo = parent2.chromo.substring(0, xoverPoint1) + parent1.chromo.substring(xoverPoint1);
+                break;
+
+            case 2: // Two Point Crossover
+
+            case 3: // Uniform Crossover
+
+            default:
+                System.out.println("ERROR - Bad crossover method selected");
+        }
+
+        // fitness values haven't been calculated, so set them to -1 as a sentinel value
+        child1.rawFitness = -1;
+        child1.sclFitness = -1;
+        child1.proFitness = -1;
+        child2.rawFitness = -1;
+        child2.sclFitness = -1;
+        child2.proFitness = -1;
     }
 
     public void doPrintGenes(Chromo X) throws IOException {
