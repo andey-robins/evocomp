@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class GrammarElement(Enum):
+class AST(Enum):
     Reproduction = 1
     Type = 2
     Value = 3
@@ -26,51 +26,52 @@ class GrammarElement(Enum):
 
 
 nonterminals = [
-    GrammarElement.Reproduction,
-    GrammarElement.Type,
-    GrammarElement.Value,
-    GrammarElement.OptValue,
-    GrammarElement.Number,
-    GrammarElement.Digit,
+    AST.Reproduction,
+    AST.Type,
+    AST.Value,
+    AST.OptValue,
+    AST.Number,
+    AST.Digit,
 ]
 
 # this structure has a key of a non-terminal and then a list of
 # valid productions for that nonterminal listed as the production
 # elements
-grammar = {
-    GrammarElement.Reproduction: [
-        [GrammarElement.Type, GrammarElement.Value, GrammarElement.OptValue]
+productions = {
+    AST.Reproduction: [
+        [AST.Type, AST.Value,
+            AST.Epsilon, AST.OptValue]
     ],
-    GrammarElement.Type: [
-        [GrammarElement.TypeOne],
-        [GrammarElement.TypeTwo],
-        [GrammarElement.TypeUniform],
+    AST.Type: [
+        [AST.TypeOne],
+        [AST.TypeTwo],
+        [AST.TypeUniform],
     ],
-    GrammarElement.Value: [[GrammarElement.Number]],
-    GrammarElement.OptValue: [[GrammarElement.Number], [GrammarElement.Epsilon]],
-    GrammarElement.Number: [
-        [GrammarElement.Digit],
-        [GrammarElement.Digit, GrammarElement.Number],
+    AST.Value: [[AST.Number]],
+    AST.OptValue: [[AST.Number], [AST.Epsilon]],
+    AST.Number: [
+        [AST.Digit],
+        [AST.Digit, AST.Number],
     ],
-    GrammarElement.Digit: [
-        [GrammarElement.DigitZero],
-        [GrammarElement.DigitOne],
-        [GrammarElement.DigitTwo],
-        [GrammarElement.DigitThree],
-        [GrammarElement.DigitFour],
-        [GrammarElement.DigitFive],
-        [GrammarElement.DigitSix],
-        [GrammarElement.DigitSeven],
-        [GrammarElement.DigitEight],
-        [GrammarElement.DigitNine],
-        [GrammarElement.RandomDigit],
+    AST.Digit: [
+        [AST.DigitZero],
+        [AST.DigitOne],
+        [AST.DigitTwo],
+        [AST.DigitThree],
+        [AST.DigitFour],
+        [AST.DigitFive],
+        [AST.DigitSix],
+        [AST.DigitSeven],
+        [AST.DigitEight],
+        [AST.DigitNine],
+        [AST.RandomDigit],
     ],
 }
 
 
-def is_nonterminal(val: GrammarElement) -> bool:
+def is_nonterminal(val: AST) -> bool:
     return val in nonterminals
 
 
-def is_terminal(val: GrammarElement) -> bool:
+def is_terminal(val: AST) -> bool:
     return val not in nonterminals

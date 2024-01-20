@@ -1,5 +1,9 @@
+from individual import Individual
+
+
 def main():
-    pass
+    i = Individual()
+    print(i.decode_crossover_strategy())
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ Reproduction Options:
 - Uniform crossover
 
 Grammar:
-- Reproduction => Type, Value, OptValue
+- Reproduction => Type Value e OptValue
 - Type => "one" | "two" | "uni"
 - Value => Number
 - OptValue => Number | e
@@ -31,3 +31,5 @@ We then decode the reproduction rules from the meta-data gene with wrapping unti
 For one point crossover, the first digit needs to somehow map to a point on the codon somewhat randomly
 For two point, the same but for both points
 For uniform, the first value will be the bias for the coin
+
+An idea which needs more vetting: throwing erros within the individual level of simulation and catching them in the population level as a way to easily handle bad genes and penalize their fitness simultaneously
